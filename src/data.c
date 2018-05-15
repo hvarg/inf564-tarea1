@@ -124,9 +124,12 @@ Uber *closest_uber (Request *req, Uber **ubers, int uber_len)
 
 void serve (Request *req, Uber *uber, List *working)
 {
+  //printf("(%d,%d) -> (%d,%d) -> (%d,%d) = ", uber->pos.x, uber->pos.y,
+  //       req->start.x, req->start.y, req->end.x, req->end.y);
+  uber->use = distance(uber->pos, req->start) + distance(req->start, req->end);
   uber->pos.x = req->end.x;
   uber->pos.y = req->end.y;
-  uber->use = distance(uber->pos, req->start) + distance(req->start, req->end);
+  //printf("%d \n", uber->use);
   add_to_list(working, uber);
 }
 
