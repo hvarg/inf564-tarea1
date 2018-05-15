@@ -20,26 +20,31 @@ int main (int argc, const char * args[])
   for (i = 0; i < req_len; i++) {
     if (req[i]->t != last_t) {
       for (; last_t < req[i]->t; last_t++) {
-        total_w += work(working);
+        n = work(working);
+        total_w += n;
         total_t++;
+        printf("%d %d (%d)\n", total_t, total_w, n);
       }
-      printf("%d %d\n", total_t, total_w);
+      //printf("%d %d\n", total_t, total_w);
     }
     while ( !(thisUber = closest_uber(req[i], uber, uber_len)) ) {
-      total_w += work(working);
+      n = work(working);
+      total_w += n;
       total_t++;
+      printf("%d %d (%d)\n", total_t, total_w, n);
     }
-    if ((thisUber = closest_uber(req[i], uber, uber_len))) {
-      serve(req[i], thisUber, working);
-    };
+    serve(req[i], thisUber, working);
+    //printf("%d %d\n", total_t, total_w);
   }
   while ( (n = work(working)) ) {
     total_t++;
     total_w += n;
+    printf("%d %d (%d)\n", total_t, total_w, n);
   };
   del_list(working);
   del_uber_array(uber, uber_len);
   del_request_array(req, req_len);
+  printf("%s %s (%d x %d)\n", uber_fn, request_fn, uber_len, req_len);
 
   //printf("%d\n", req[i]->t);
   /*
