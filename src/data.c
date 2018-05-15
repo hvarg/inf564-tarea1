@@ -9,35 +9,35 @@ int count_lines (FILE *fp)
   while ((c = getc(fp)) != EOF)
     if (c == '\n') 
       count++;
-  //fseek(fp, 0, SEEK_SET);
   rewind(fp);
   return count;
 }
 
-Uber **open_uber_file (const char *filename, int size)
+Uber **open_uber_file (const char *filename, int *usize)
 {
   FILE *fp = fopen(filename, "r");
+  int i, size = count_lines(fp);
   Uber **ubers = (Uber **) malloc(sizeof(Uber *) * size);
-  int i;
   for (i = 0; i < size; i++) {
     ubers[i] = (Uber *) malloc(sizeof(Uber));
-    fscanf(fp, UBER_FORMAT, &(ubers[i]->x), &(ubers[i]->y));
+    ubers[i]->use = 0;
+    fscanf(fp, UBER_FORMAT, &(ubers[i]->pos.x), &(ubers[i]->pos.y));
   }
   fclose(fp);
+  *usize = size;
   return ubers;
 }
 
 Request **open_request_file (const char *filename, int *rsize)
 {
-  printf("reading: %s\n", filename);
   FILE *fp = fopen(filename, "r");
   int i, size = count_lines(fp);
   Request **reqs = (Request **) malloc(sizeof(Request *) * size);
   for (i = 0; i < size; i++) {
     reqs[i] = (Request *) malloc(sizeof(Request));
     fscanf(fp, REQUEST_FORMAT, 
-           &(reqs[i]->x0), &(reqs[i]->y0),
-           &(reqs[i]->x1), &(reqs[i]->y1),
+           &(reqs[i]->start.x), &(reqs[i]->start.y),
+           &(reqs[i]->end.x), &(reqs[i]->end.y),
            &(reqs[i]->t));
   }
   fclose(fp);
@@ -45,9 +45,105 @@ Request **open_request_file (const char *filename, int *rsize)
   return reqs;
 }
 
-void init_ubers (Uber **manana, Uber **tarde, Uber **noche)
+void del_uber_array (Uber **uber, int size)
 {
-  manana = open_uber_file(MANANA_FN, MANANA_LEN);
-  tarde  = open_uber_file(TARDE_FN, TARDE_LEN);
-  noche  = open_uber_file(NOCHE_FN, NOCHE_LEN);
+  int i;
+  for (i = 0; i < size; free(uber[i++]));
+  free(uber);
+}
+
+void del_request_array (Request **req, int size)
+{
+  int i;
+  for (i = 0; i < size; free(req[i++]));
+  free(req);
+}
+
+List *new_list ()
+{
+  List *list = (List *) malloc(sizeof(List));
+  list->first = NULL;
+  list->last = NULL;
+  return list;
+}
+
+void del_list (List *list)
+{
+  while (list->first) {
+    remove_from_list(list, list->first);
+  }
+  free(list);
+}
+
+void add_to_list (List *list, Uber *uber)
+{
+  Item *item = (Item *) malloc(sizeof(Item));
+  item->uber = uber;
+  item->next = NULL;
+  item->prev = list->last;
+  if (list->last)
+    list->last->next = item;
+  list->last = item;
+  if (!list->first)
+    list->first = item;
+}
+
+void remove_from_list (List *list, Item *item)
+{
+  if (item->prev)
+    item->prev->next = item->next;
+  else
+    list->first = item->next;
+  if (item->next)
+    item->next->prev = item->prev;
+  else
+    list->last = item->prev;
+  free(item);
+}
+
+int distance (Coord c1, Coord c2)
+{
+  return abs(c1.x - c2.x) + abs(c1.y - c2.y);
+}
+
+Uber *closest_uber (Request *req, Uber **ubers, int uber_len)
+{
+  int i, tmp, min = 2000;
+  Uber *current = NULL;
+  for (i = 0; i < uber_len; i++) {
+    if (ubers[i]->use == 0) {
+      tmp = distance(req->start, ubers[i]->pos);
+      if (tmp < min) {
+        min = tmp;
+        current = ubers[i];
+      }
+    }
+  }
+  return current;
+}
+
+void serve (Request *req, Uber *uber, List *working)
+{
+  uber->pos.x = req->end.x;
+  uber->pos.y = req->end.y;
+  uber->use = distance(uber->pos, req->start) + distance(req->start, req->end);
+  add_to_list(working, uber);
+}
+
+int work (List *working)
+{
+  int sum = 0;
+  Item *cur = working->first, *tmp;
+  while (cur != NULL) {
+    cur->uber->use--;
+    sum++;
+    if (cur->uber->use == 0) {
+      tmp = cur->next;
+      remove_from_list(working, cur);
+      cur = tmp;
+    } else {
+      cur = cur->next;
+    }
+  }
+  return sum;
 }
