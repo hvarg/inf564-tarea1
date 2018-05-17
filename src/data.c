@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include "data.h"
 
+#define HEADER() printf("t,d,n\n")
+#define ONTICK() printf("%d,%d,%d\n", total_t, total_w, n)
+#define ONSERVE()
+
 int count_lines (FILE *fp) 
 {
   int count = 0;
@@ -101,28 +105,30 @@ void remove_from_list (List *list, Item *item)
   free(item);
 }
 
+KServer *kserver_from_files (const char *uber_fn, const char *req_fn)
+{
+  KServer *p = (KServer *) malloc(sizeof(KServer));
+  p->uber = open_uber_file(uber_fn, &(p->uber_len));
+  p->req = open_request_file(req_fn, &(p->req_len));
+  p->running = new_list();
+  HEADER();
+  return p;
+}
+
+void del_kserver (KServer *p)
+{
+  del_list(p->running);
+  del_uber_array(p->uber, p->uber_len);
+  del_request_array(p->req, p->req_len);
+  free(p);
+}
+
 int distance (Coord c1, Coord c2)
 {
   return abs(c1.x - c2.x) + abs(c1.y - c2.y);
 }
 
-Uber *closest_uber (Request *req, Uber **ubers, int uber_len)
-{
-  int i, tmp, min = 2000;
-  Uber *current = NULL;
-  for (i = 0; i < uber_len; i++) {
-    if (ubers[i]->use == 0) {
-      tmp = distance(req->start, ubers[i]->pos);
-      if (tmp < min) {
-        min = tmp;
-        current = ubers[i];
-      }
-    }
-  }
-  return current;
-}
-
-void serve (Request *req, Uber *uber, List *working)
+void serve (Request *req, Uber *uber, List *running)
 {
   //printf("(%d,%d) -> (%d,%d) -> (%d,%d) = ", uber->pos.x, uber->pos.y,
   //       req->start.x, req->start.y, req->end.x, req->end.y);
@@ -130,19 +136,19 @@ void serve (Request *req, Uber *uber, List *working)
   uber->pos.x = req->end.x;
   uber->pos.y = req->end.y;
   //printf("%d \n", uber->use);
-  add_to_list(working, uber);
+  add_to_list(running, uber);
 }
 
-int work (List *working)
+int tick (List *running)
 {
   int sum = 0;
-  Item *cur = working->first, *tmp;
+  Item *cur = running->first, *tmp;
   while (cur != NULL) {
     cur->uber->use--;
     sum++;
     if (cur->uber->use == 0) {
       tmp = cur->next;
-      remove_from_list(working, cur);
+      remove_from_list(running, cur);
       cur = tmp;
     } else {
       cur = cur->next;
@@ -150,3 +156,34 @@ int work (List *working)
   }
   return sum;
 }
+
+void run_kserver (KServer *p)
+{
+  int i, last_t=0, n, total_w =0, total_t = 0;
+  Uber *thisUber;
+  for (i = 0; i < p->req_len; i++) {
+    if (p->req[i]->t != last_t) {
+      for (; last_t < p->req[i]->t; last_t++) {
+        n = tick(p->running);
+        total_w += n;
+        total_t++;
+        ONTICK();
+      }
+    }
+    while ( !(thisUber = p->selector(p->req[i], p->uber, p->uber_len)) ) {
+      n = tick(p->running);
+      total_w += n;
+      total_t++;
+      ONTICK();
+    }
+    serve(p->req[i], thisUber, p->running);
+    ONSERVE();
+  }
+  while ( (n = tick(p->running)) ) {
+    total_t++;
+    total_w += n;
+    ONTICK();
+  };
+
+}
+

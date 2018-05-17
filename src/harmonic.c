@@ -3,15 +3,6 @@
 #include <time.h>
 #include "data.h"
 
-#define HEADER() printf("t,d,n\n")
-//#define ONTICK() printf("%d %d (%d)\n", total_t, total_w, n)
-#define ONTICK() printf("%d,%d,%d\n", total_t, total_w, n)
-//#define ONTICK() 
-//#define ONTICK() printf("%d,%d,%d\n", total_t, n,i)
-#define ONSERVE()
-//#define ONSERVE() printf("%d\n", thisUber->use);
-//#define ONSERVE() printf("%d, %d\n", total_t, total_w);
-
 double r2 ()
 {
   return (double)rand() / (double)((unsigned)RAND_MAX + 1);
@@ -19,7 +10,8 @@ double r2 ()
 }
 
 
-Uber *harmonic (Request *req, Uber **uber, int uber_len, double *p)
+double *p;
+Uber *harmonic (Request *req, Uber **uber, int uber_len)
 {
   int j;
   double sum_p = 0.0, s=0.0, r=0.0;//, tmp=0.0;
@@ -51,45 +43,13 @@ int main (int argc, const char * args[])
     printf("Modo de uso: ./uber ubers.dat request.dat\n");
     return EXIT_FAILURE;
   }
-  char *uber_fn = (char*) args[1],
-       *request_fn = (char*) args[2];
-  int uber_len, req_len;
-  Uber **uber = open_uber_file(uber_fn, &uber_len);
-  Request **req = open_request_file(request_fn, &req_len);
-
   srand(8);//time(NULL));
-  HEADER();
 
-  int i, last_t=0, n, total_w =0, total_t = 0;
-  double *p = (double *) malloc(sizeof(double)*uber_len);
-  Uber *thisUber;
-  List *working = new_list();
-  for (i = 0; i < req_len; i++) {
-    if (req[i]->t != last_t) {
-      for (; last_t < req[i]->t; last_t++) {
-        n = work(working);
-        total_w += n;
-        total_t++;
-        ONTICK();
-      }
-    }
-    while ( !(thisUber = harmonic(req[i], uber, uber_len, p)) ) {
-      n = work(working);
-      total_w += n;
-      total_t++;
-      ONTICK();
-    }
-    serve(req[i], thisUber, working);
-    ONSERVE();
-  }
-  while ( (n = work(working)) ) {
-    total_t++;
-    total_w += n;
-    ONTICK();
-  };
-  del_list(working);
-  del_uber_array(uber, uber_len);
-  del_request_array(req, req_len);
+  KServer *kserver = kserver_from_files ((char *) args[1], (char *) args[2]);
+  p = (double *) malloc(sizeof(double)*kserver->uber_len);
+  kserver->selector = &harmonic;
+  run_kserver(kserver);
+  del_kserver(kserver);
 
   return EXIT_SUCCESS;
 }
