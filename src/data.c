@@ -3,10 +3,10 @@
 #include "data.h"
 
 /* Las definiciones de HEADER, ONTICK y ONSERVE determinan las salidas que
- * tendrá el algoritmo, por ejemplo para generar un csv con los datos:
-#define HEADER() printf("time,work,used_ubers\n")
-#define ONTICK() printf("%d,%d,%d\n", total_t, total_w, n)
- * para obtener la salida requerida: */
+ * tendrá el algoritmo, por ejemplo para generar un csv con los datos: */
+//#define HEADER() printf("time,work,used_ubers\n")
+//#define ONTICK() printf("%d,%d,%d\n", total_t, total_w, n)
+/* para obtener la salida requerida: */
 #define HEADER()
 #define ONTICK() printf("%d %d\n", total_t, total_w)
 #define ONSERVE()

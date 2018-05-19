@@ -17,10 +17,15 @@ Uber *harmonic (Request *req, Uber **uber, int uber_len)
 {
   int j;
   double sum_p = 0.0, s=0.0, r=0.0;
+  int d = 0;
   /* Obteniendo la suma. */
   for (j = 0; j < uber_len; j++) {
     if (uber[j]->use == 0) {
-      p[j] = 1.0 / distance(req->start, uber[j]->pos);
+      d = distance(req->start, uber[j]->pos);
+      if (d == 0) 
+        p[j] = 1.0 / 0.5;
+      else 
+        p[j] = 1.0 / d;
       sum_p += p[j];
     } else {
       p[j] = 0.0;
@@ -44,7 +49,7 @@ int main (int argc, const char * args[])
     printf("Modo de uso: ./uber ubers.dat request.dat\n");
     return EXIT_FAILURE;
   }
-  srand(8);//time(NULL)); //Semilla aleatoria.
+  srand(time(NULL)); //Semilla aleatoria.
 
   KServer *kserver = kserver_from_files ((char *) args[1], (char *) args[2]);
   p = (double *) malloc(sizeof(double)*kserver->uber_len);
