@@ -1,6 +1,7 @@
 #ifndef DATAFILE_H_
 #define DATAFILE_H_
 
+/* Formato de los archivos a leer. */
 #define UBER_FORMAT    "%hd %hd "
 #define REQUEST_FORMAT "%hd %hd - %hd %hd - %d "
 

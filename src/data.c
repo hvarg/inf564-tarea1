@@ -2,10 +2,16 @@
 #include <stdlib.h>
 #include "data.h"
 
-#define HEADER() printf("t,d,n\n")
+/* Las definiciones de HEADER, ONTICK y ONSERVE determinan las salidas que
+ * tendrá el algoritmo, por ejemplo para generar un csv con los datos:
+#define HEADER() printf("time,work,used_ubers\n")
 #define ONTICK() printf("%d,%d,%d\n", total_t, total_w, n)
+ * para obtener la salida requerida: */
+#define HEADER()
+#define ONTICK() printf("%d %d\n", total_t, total_w)
 #define ONSERVE()
 
+/* Cuenta las lineas de un archivo. */
 int count_lines (FILE *fp) 
 {
   int count = 0;
@@ -17,6 +23,8 @@ int count_lines (FILE *fp)
   return count;
 }
 
+/* Abre el archivo con ubers y los guarda en un array. 
+ * en usize se guarda el tamaño del array creado. */
 Uber **open_uber_file (const char *filename, int *usize)
 {
   FILE *fp = fopen(filename, "r");
@@ -32,6 +40,8 @@ Uber **open_uber_file (const char *filename, int *usize)
   return ubers;
 }
 
+/* Abre el archivo con solicitudes y las guarda en un array
+ * en rsize se guarda el tamaño del array creado. */
 Request **open_request_file (const char *filename, int *rsize)
 {
   FILE *fp = fopen(filename, "r");
@@ -49,6 +59,7 @@ Request **open_request_file (const char *filename, int *rsize)
   return reqs;
 }
 
+/* Borra un array de ubers, como el creado por open_uber_file. */
 void del_uber_array (Uber **uber, int size)
 {
   int i;
@@ -56,6 +67,7 @@ void del_uber_array (Uber **uber, int size)
   free(uber);
 }
 
+/* Borra un array de solicitudes, como el creado por open_request_file. */
 void del_request_array (Request **req, int size)
 {
   int i;
@@ -63,6 +75,7 @@ void del_request_array (Request **req, int size)
   free(req);
 }
 
+/* Crea una lista de ubers. */
 List *new_list ()
 {
   List *list = (List *) malloc(sizeof(List));
@@ -71,6 +84,7 @@ List *new_list ()
   return list;
 }
 
+/* Borra una lista de ubers. */
 void del_list (List *list)
 {
   while (list->first) {
@@ -79,6 +93,7 @@ void del_list (List *list)
   free(list);
 }
 
+/* Agrega un uber a una lista de ubers. */
 void add_to_list (List *list, Uber *uber)
 {
   Item *item = (Item *) malloc(sizeof(Item));
@@ -92,6 +107,7 @@ void add_to_list (List *list, Uber *uber)
     list->first = item;
 }
 
+/* Quita un uber de una lista de ubers. */
 void remove_from_list (List *list, Item *item)
 {
   if (item->prev)
@@ -105,6 +121,8 @@ void remove_from_list (List *list, Item *item)
   free(item);
 }
 
+/* Crea una instancia del problema de k-servidores con los datos de un archivo
+ * de ubers 'uber_fn' y un archivo de solicitudes 'request_fn'. */
 KServer *kserver_from_files (const char *uber_fn, const char *req_fn)
 {
   KServer *p = (KServer *) malloc(sizeof(KServer));
@@ -115,6 +133,7 @@ KServer *kserver_from_files (const char *uber_fn, const char *req_fn)
   return p;
 }
 
+/* Borra una instancia del problema de k-servidores. */
 void del_kserver (KServer *p)
 {
   del_list(p->running);
@@ -123,22 +142,25 @@ void del_kserver (KServer *p)
   free(p);
 }
 
+/* Retorna la distancia entre dos puntos. */
 int distance (Coord c1, Coord c2)
 {
   return abs(c1.x - c2.x) + abs(c1.y - c2.y);
 }
 
+/* Asigna un uber para que sirva una solicitud. */
 void serve (Request *req, Uber *uber, List *running)
 {
-  //printf("(%d,%d) -> (%d,%d) -> (%d,%d) = ", uber->pos.x, uber->pos.y,
-  //       req->start.x, req->start.y, req->end.x, req->end.y);
+  ONSERVE();
   uber->use = distance(uber->pos, req->start) + distance(req->start, req->end);
   uber->pos.x = req->end.x;
   uber->pos.y = req->end.y;
-  //printf("%d \n", uber->use);
   add_to_list(running, uber);
 }
 
+/* Avanza el tiempo una unidad, todos los ubers en la lista 'running' se mueven,
+ * los ubers que llegan a su destino salen de la lista, se retorna el total de
+ * lo recorrido en este instante de tiempo para que sea sumado al trabajo total. */
 int tick (List *running)
 {
   int sum = 0;
@@ -157,12 +179,14 @@ int tick (List *running)
   return sum;
 }
 
+/* Ejecuta el problema de k-servidores para uber. */
 void run_kserver (KServer *p)
 {
   int i, last_t=0, n, total_w =0, total_t = 0;
   Uber *thisUber;
   for (i = 0; i < p->req_len; i++) {
     if (p->req[i]->t != last_t) {
+      /* El tiempo pasa hasta que llega una solicitud. */
       for (; last_t < p->req[i]->t; last_t++) {
         n = tick(p->running);
         total_w += n;
@@ -170,15 +194,16 @@ void run_kserver (KServer *p)
         ONTICK();
       }
     }
+    /* El tiempo pasa mientras no hay ubers disponibles */
     while ( !(thisUber = p->selector(p->req[i], p->uber, p->uber_len)) ) {
       n = tick(p->running);
       total_w += n;
       total_t++;
       ONTICK();
     }
-    serve(p->req[i], thisUber, p->running);
-    ONSERVE();
+    serve(p->req[i], thisUber, p->running); // Se asigna la solicitud.
   }
+  /* El tiempo pasa mientras ubers se muevan. */
   while ( (n = tick(p->running)) ) {
     total_t++;
     total_w += n;
